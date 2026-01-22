@@ -169,39 +169,76 @@
             position: absolute;
             top: 50px;
             right: 22px;
-            width: 70px;
-            height: 70px;
-            background: rgba(0, 0, 0, 0.6);
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 0, 0, 0.7);
             border-radius: 50%;
-            border: 2px solid #3a4a5a;
+            border: 2px solid #5a6a7a;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
+            cursor: grab;
+            transition: border-color 0.2s;
+            user-select: none;
+        }
+
+        .compass:hover {
+            border-color: var(--secondary);
+        }
+
+        .compass:active {
+            cursor: grabbing;
+        }
+
+        .compass-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.1s ease-out;
         }
 
         .compass-n {
             position: absolute;
-            top: 3px;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
             color: var(--danger);
             font-weight: bold;
+            font-size: 0.9rem;
         }
 
         .compass-s {
             position: absolute;
-            bottom: 3px;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
             color: var(--secondary);
         }
 
         .compass-e {
             position: absolute;
-            right: 5px;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
         }
 
         .compass-w {
             position: absolute;
-            left: 5px;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .compass-hint {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+            color: var(--text-muted);
+            white-space: nowrap;
         }
 
         /* Output Panel */
@@ -455,11 +492,14 @@
                     </div>
                 </div>
                 <canvas id="floorCanvas"></canvas>
-                <div class="compass">
-                    <span class="compass-n">北</span>
-                    <span class="compass-s">南</span>
-                    <span class="compass-e">東</span>
-                    <span class="compass-w">西</span>
+                <div class="compass" id="compass">
+                    <span class="compass-hint">拖拉旋轉</span>
+                    <div class="compass-inner" id="compassInner">
+                        <span class="compass-n">北</span>
+                        <span class="compass-s">南</span>
+                        <span class="compass-e">東</span>
+                        <span class="compass-w">西</span>
+                    </div>
                 </div>
             </div>
 
@@ -514,6 +554,7 @@
         let dragMode = null; // 'move', 'resize', 'rotate'
         let dragStart = { x: 0, y: 0 };
         let originalState = null;
+        let compassRotation = 0; // in degrees, 0 = north up
 
         // ===== Canvas Setup =====
         const canvas = document.getElementById('floorCanvas');
@@ -546,7 +587,13 @@
             const threshold = 50;
             if (Math.abs(dx) < threshold && Math.abs(dy) < threshold) return '中央';
 
-            const angle = Math.atan2(-dy, dx) * 180 / Math.PI;
+            // Calculate angle and adjust for compass rotation
+            let angle = Math.atan2(-dy, dx) * 180 / Math.PI;
+            angle = angle - compassRotation; // Adjust for compass rotation
+
+            // Normalize angle to -180 to 180
+            while (angle > 180) angle -= 360;
+            while (angle < -180) angle += 360;
 
             if (angle >= -22.5 && angle < 22.5) return '東';
             if (angle >= 22.5 && angle < 67.5) return '東北';
@@ -703,16 +750,30 @@
             return true;
         }
 
+        let isDraggingFromToolbox = false;
+
         document.querySelectorAll('.tool-item').forEach(item => {
             // Drag start
             item.addEventListener('dragstart', (e) => {
+                isDraggingFromToolbox = true;
                 e.dataTransfer.setData('type', item.dataset.type);
                 e.dataTransfer.setData('value', item.dataset.value);
                 e.dataTransfer.setData('icon', item.dataset.icon);
             });
 
-            // Click to spawn (for rooms/facilities only)
+            item.addEventListener('dragend', () => {
+                // Reset after a short delay to allow drop to complete
+                setTimeout(() => { isDraggingFromToolbox = false; }, 100);
+            });
+
+            // Click to spawn (only if not dragging)
             item.addEventListener('click', (e) => {
+                // Skip if this was a drag action
+                if (isDraggingFromToolbox) {
+                    isDraggingFromToolbox = false;
+                    return;
+                }
+
                 const type = item.dataset.type;
                 const value = item.dataset.value;
                 const icon = item.dataset.icon;
@@ -1061,6 +1122,41 @@
                     btn.style.color = 'var(--success)';
                 }, 2000);
             });
+        });
+
+        // ===== Compass Rotation =====
+        const compass = document.getElementById('compass');
+        const compassInner = document.getElementById('compassInner');
+        let isRotatingCompass = false;
+        let compassStartAngle = 0;
+
+        compass.addEventListener('mousedown', (e) => {
+            isRotatingCompass = true;
+            const rect = compass.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            compassStartAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI - compassRotation;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isRotatingCompass) return;
+            const rect = compass.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const currentAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+            compassRotation = currentAngle - compassStartAngle;
+
+            // Update visual rotation
+            compassInner.style.transform = `rotate(${compassRotation}deg)`;
+
+            // Redraw to update directions
+            draw();
+            updateConfigList();
+        });
+
+        document.addEventListener('mouseup', () => {
+            isRotatingCompass = false;
         });
 
         // Add CSS animation
