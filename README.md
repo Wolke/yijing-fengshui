@@ -1,5 +1,7 @@
 # 易經陽宅風水 Yijing Yangzhai Fengshui
 
+![Hero Image](assets/hero.png)
+
 基於倪海廈老師易經陽宅學說的 AI 風水分析技能。
 
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
