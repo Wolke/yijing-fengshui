@@ -525,38 +525,40 @@ document.getElementById('generateBtn').addEventListener('click', () => {
         return;
     }
 
-    const family = {};
-    const roomsData = {};
+    const family = [];
+    const roomsData = [];
 
+    // Collect Family Data
     persons.forEach(p => {
         const bedroom = rooms[p.bedroomId];
         if (bedroom) {
             const dir = getDirection(bedroom.x, bedroom.y, bedroom.w, bedroom.h);
-            family[p.value] = dir;
+            family.push({ member: p.value, dir: dir });
         }
     });
 
+    // Collect Rooms Data
     rooms.forEach(r => {
         if (!isBedroom(r.value)) {
             const dir = getDirection(r.x, r.y, r.w, r.h);
-            roomsData[r.value] = dir;
+            roomsData.push({ room: r.value, dir: dir });
         }
     });
 
     let prompt = `請幫我分析住宅風水：\n\n`;
 
-    if (Object.keys(family).length > 0) {
+    if (family.length > 0) {
         prompt += `【家庭成員臥室位置】\n`;
-        Object.entries(family).forEach(([member, dir]) => {
-            prompt += `- ${member}：${dir}\n`;
+        family.forEach(item => {
+            prompt += `- ${item.member}：${item.dir}\n`;
         });
         prompt += '\n';
     }
 
-    if (Object.keys(roomsData).length > 0) {
+    if (roomsData.length > 0) {
         prompt += `【房間/設施位置】\n`;
-        Object.entries(roomsData).forEach(([room, dir]) => {
-            prompt += `- ${room}：${dir}\n`;
+        roomsData.forEach(item => {
+            prompt += `- ${item.room}：${item.dir}\n`;
         });
         prompt += '\n';
     }
