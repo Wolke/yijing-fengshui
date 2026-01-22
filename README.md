@@ -53,6 +53,10 @@ python scripts/fengshui_calc.py --analyze \
 
 提供視覺化平面圖建構器，可拖拉房間和家庭成員：
 
+**[👉 點此直接進行線上體驗 (Demo)](https://wolke.github.io/yijing-fengshui/)**
+
+或者本地運行：
+
 ```bash
 cd web
 npx -y serve .
